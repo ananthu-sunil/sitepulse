@@ -1,7 +1,7 @@
 import app from "./app.js";
 
-const PORT = process.env.PORT || 3000;
+import { config } from "./config/env.js";
 
-app.listen(PORT, () => {
-  console.log(`SitePulse API listening on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(`SitePulse API listening on port ${config.port}`);
 });
