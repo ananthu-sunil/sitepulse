@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_DB: sitepulse
+      POSTGRES_USER: sitepulse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - sitepulse-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sitepulse -d sitepulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sitepulse-postgres-data:
