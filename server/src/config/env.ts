@@ -11,6 +11,7 @@ const envSchema = z.object({
     .default("development"),
 
   DATABASE_URL: z.url(),
+  DATABASE_TEST_URL: z.url(),
 });
 
 const env = envSchema.parse(process.env);
@@ -19,4 +20,5 @@ export const config = {
   port: env.PORT,
   nodeEnv: env.NODE_ENV,
   databaseUrl: env.DATABASE_URL,
+  databaseTestUrl: env.DATABASE_TEST_URL,
 };

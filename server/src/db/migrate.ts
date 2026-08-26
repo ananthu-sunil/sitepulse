@@ -1,10 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { pool } from "./client.js";
+import { Pool } from "pg";
+import { config } from "../config/env.js";
 
 const migrationsDirectory = path.join(import.meta.dirname, "migrations");
 
-async function migrate() {
+async function migrate(databaseUrl: string) {
+  const pool = new Pool({ connectionString: databaseUrl });
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -46,8 +48,12 @@ async function migrate() {
   await pool.end();
 }
 
-migrate().catch(async (error) => {
+const databaseUrl =
+  process.argv[2] === "test"
+    ? config.databaseTestUrl
+    : config.databaseUrl;
+
+migrate(databaseUrl).catch(async (error) => {
   console.error("Migration failed:", error);
-  await pool.end();
   process.exit(1);
 });

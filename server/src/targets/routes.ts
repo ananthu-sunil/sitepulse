@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createMonitoredTarget } from "../db/monitored-targets.js";
 import { createTargetSchema } from "./schema.js";
+import { pool } from "../db/client.js";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const target = await createMonitoredTarget(result.data.url);
+    const target = await createMonitoredTarget(pool,result.data.url);
     res.status(201).json(target);
     
   } catch (error) {

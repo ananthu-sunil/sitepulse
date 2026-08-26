@@ -9,6 +9,8 @@ services:
       - "5432:5432"
     volumes:
       - sitepulse-postgres-data:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sitepulse -d sitepulse"]
       interval: 5s
