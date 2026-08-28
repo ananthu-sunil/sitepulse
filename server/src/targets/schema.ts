@@ -11,4 +11,9 @@ export const createTargetSchema = z.object({
     ),
 });
 
+export const updateTargetSchema = z.object({
+  active: z.boolean(),
+});
+
 export type CreateTargetInput = z.infer<typeof createTargetSchema>;
+export type UpdateTargetInput = z.infer<typeof updateTargetSchema>;

@@ -26,10 +26,7 @@ function mapRow(row: MonitoredTargetRow): MonitoredTarget {
   };
 }
 
-export async function createMonitoredTarget(
-  db : Pool,
-  url: string
-): Promise<MonitoredTarget> {
+export async function createMonitoredTarget(db : Pool, url: string): Promise<MonitoredTarget> {
   const result = await db.query<MonitoredTargetRow>(
     `
       INSERT INTO monitored_targets (url)
@@ -54,10 +51,7 @@ export async function listMonitoredTargets(db: Pool): Promise<MonitoredTarget[]>
   return result.rows.map(mapRow);
 }
 
-export async function getMonitoredTargetById(
-  db: Pool,
-  id: number
-): Promise<MonitoredTarget | null> {
+export async function getMonitoredTargetById(db: Pool, id: number): Promise<MonitoredTarget | null> {
   const result = await db.query<MonitoredTargetRow>(
     `
       SELECT id, url, active, created_at, updated_at
@@ -65,6 +59,22 @@ export async function getMonitoredTargetById(
       WHERE id = $1
     `,
     [id]
+  );
+
+  const row = result.rows[0];
+  return row ? mapRow(row) : null;
+}
+
+export async function updateMonitoredTarget(db: Pool, id: number, active: boolean): Promise<MonitoredTarget | null> {
+  const result = await db.query<MonitoredTargetRow>(
+    `
+      UPDATE monitored_targets
+      SET active = $2,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, url, active, created_at, updated_at
+    `,
+    [id, active]
   );
 
   const row = result.rows[0];
