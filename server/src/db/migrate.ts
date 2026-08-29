@@ -5,8 +5,14 @@ import { config } from "../config/env.js";
 
 const migrationsDirectory = path.join(import.meta.dirname, "migrations");
 
-async function migrate(databaseUrl: string) {
+export async function migrate(databaseUrl: string, schema: string = "public") {
   const pool = new Pool({ connectionString: databaseUrl });
+
+  if (schema !== "public") {
+    await pool.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+    await pool.query(`SET search_path TO "${schema}"`);
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

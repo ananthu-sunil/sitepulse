@@ -1,0 +1,5 @@
+ALTER TABLE scans
+ALTER COLUMN status_code DROP NOT NULL;
+
+ALTER TABLE scans
+ADD COLUMN error TEXT;
