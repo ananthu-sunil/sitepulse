@@ -80,3 +80,16 @@ export async function updateMonitoredTarget(db: Pool, id: number, active: boolea
   const row = result.rows[0];
   return row ? mapRow(row) : null;
 }
+
+export async function listActiveMonitoredTargets(db: Pool,): Promise<MonitoredTarget[]> {
+  const result = await db.query<MonitoredTargetRow>(
+    `
+      SELECT id, url, active, created_at, updated_at
+      FROM monitored_targets
+      WHERE active = true
+      ORDER BY created_at DESC
+    `,
+  );
+
+  return result.rows.map(mapRow);
+}
