@@ -1,6 +1,3 @@
-import { Pool } from "pg";
-import { databaseConfig } from "../config/database.js";
+import { createTestPool } from "./test-database.js";
 
-export const testPool = new Pool({
-  connectionString: databaseConfig.databaseTestUrl,
-});
+export const testPool = createTestPool();

@@ -3,7 +3,7 @@ import path from "node:path";
 import { Pool } from "pg";
 import { databaseConfig } from "@sitepulse/backend/config/database.js";
 
-const migrationsDirectory = path.join(import.meta.dirname, "migrations");
+const migrationsDirectory = path.join(import.meta.dirname, "migrations",);
 
 export async function migrate(databaseUrl: string, schema: string = "public",) {
   const pool = new Pool({ connectionString: databaseUrl });
