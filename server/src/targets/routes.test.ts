@@ -1,7 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import app from "../app.js";
+import { createApp } from "../app.js";
 import { testPool } from "../db/test-database.js";
+
+const app = createApp(testPool);
 
 afterAll(async () => {await testPool.end();});
 
