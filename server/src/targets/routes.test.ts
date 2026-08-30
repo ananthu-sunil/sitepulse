@@ -1,14 +1,14 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import app from "../app.js";
-import { pool } from "../db/client.js";
+import { testPool } from "../db/test-database.js";
 
-afterAll(async () => {await pool.end();});
+afterAll(async () => {await testPool.end();});
 
 describe("POST /targets", () => {
   beforeEach(async () => {
-  await pool.query("DELETE FROM scans");
-  await pool.query("DELETE FROM monitored_targets");
+  await testPool.query("DELETE FROM scans");
+  await testPool.query("DELETE FROM monitored_targets");
   });
   
   it("creates a monitored target", async () => {
@@ -33,7 +33,7 @@ describe("POST /targets", () => {
 });
 
 describe("GET /targets", () => {
-  beforeEach(async () => {await pool.query("DELETE FROM monitored_targets");});
+  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
   
   it("returns all monitored targets", async () => {await request(app).post("/targets").send({ url: "https://example.com" });
   await request(app).post("/targets").send({ url: "https://google.com" });
@@ -56,7 +56,7 @@ describe("GET /targets", () => {
 });
 
 describe("GET /targets/:id", () => {
-  beforeEach(async () => {await pool.query("DELETE FROM monitored_targets");});
+  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
 
   it("returns a monitored target by ID", async () => {
     const createResponse = await request(app).post("/targets").send({ url: "https://example.com" });
@@ -84,7 +84,7 @@ describe("GET /targets/:id", () => {
 });
 
 describe("PATCH /targets/:id", () => {
-  beforeEach(async () => {await pool.query("DELETE FROM monitored_targets");});
+  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
 
   it("updates the active status of a target", async () => {
     const createResponse = await request(app).post("/targets").send({ url: "https://example.com" });

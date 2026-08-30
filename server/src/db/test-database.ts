@@ -16,3 +16,5 @@ export function createTestPool() {
     options: `-c search_path=${testSchema}`,
   });
 }
+
+export const testPool = createTestPool();
