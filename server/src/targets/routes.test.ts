@@ -6,7 +6,10 @@ import { pool } from "../db/client.js";
 afterAll(async () => {await pool.end();});
 
 describe("POST /targets", () => {
-  beforeEach(async () => {await pool.query("DELETE FROM monitored_targets");});
+  beforeEach(async () => {
+  await pool.query("DELETE FROM scans");
+  await pool.query("DELETE FROM monitored_targets");
+  });
   
   it("creates a monitored target", async () => {
     const response = await request(app).post("/targets").send({url: "https://example.com",});
