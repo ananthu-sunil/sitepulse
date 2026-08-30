@@ -7,11 +7,13 @@ const app = createApp(testPool);
 
 afterAll(async () => {await testPool.end();});
 
-describe("POST /targets", () => {
-  beforeEach(async () => {
+async function clearTargets() {
   await testPool.query("DELETE FROM scans");
   await testPool.query("DELETE FROM monitored_targets");
-  });
+}
+
+describe("POST /targets", () => {
+  beforeEach(clearTargets);
   
   it("creates a monitored target", async () => {
     const response = await request(app).post("/targets").send({url: "https://example.com",});
@@ -35,7 +37,7 @@ describe("POST /targets", () => {
 });
 
 describe("GET /targets", () => {
-  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
+  beforeEach(clearTargets);
   
   it("returns all monitored targets", async () => {await request(app).post("/targets").send({ url: "https://example.com" });
   await request(app).post("/targets").send({ url: "https://google.com" });
@@ -58,7 +60,7 @@ describe("GET /targets", () => {
 });
 
 describe("GET /targets/:id", () => {
-  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
+  beforeEach(clearTargets);
 
   it("returns a monitored target by ID", async () => {
     const createResponse = await request(app).post("/targets").send({ url: "https://example.com" });
