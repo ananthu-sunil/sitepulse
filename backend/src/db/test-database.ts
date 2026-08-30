@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { databaseConfig } from "@sitepulse/backend/config/database.js";
-import { migrate } from "@sitepulse/backend/db/migrate.js";
+import { migrate } from "./migrate.js";
 
 const workerId = process.env.VITEST_POOL_ID ?? "default";
 

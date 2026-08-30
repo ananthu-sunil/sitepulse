@@ -11,6 +11,6 @@ describe("PostgreSQL connection", () => {
 
     expect(result.rows[0]).toEqual({
       value: 1,
-    });
+    }); 
   });
 });

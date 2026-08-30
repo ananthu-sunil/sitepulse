@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { testPool } from "../db/test-client.js";
 import { createMonitoredTarget } from "../db/monitored-targets.js";
-import { performScan } from "./service.js";
+import { performScan } from "./perform-scan.js";
 import { scanTarget } from "./scanner.js";
 
 const mockedScanTarget = vi.mocked(scanTarget);
