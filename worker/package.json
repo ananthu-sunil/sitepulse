@@ -1,0 +1,23 @@
+{
+  "name": "worker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SitePulse background scan worker",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node dist/worker.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@sitepulse/backend": "1.0.0",
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0"
+  }
+}
