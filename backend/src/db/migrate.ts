@@ -1,7 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
-import { databaseConfig } from "@sitepulse/backend/config/database.js";
 
 const migrationsDirectory = path.join(import.meta.dirname, "migrations",);
 
@@ -58,8 +57,16 @@ export async function migrate(databaseUrl: string, schema: string = "public",) {
 
 const databaseUrl =
   process.argv[2] === "test"
-    ? databaseConfig.databaseTestUrl
-    : databaseConfig.databaseUrl;
+    ? process.env.DATABASE_TEST_URL
+    : process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error(
+    process.argv[2] === "test"
+      ? "DATABASE_TEST_URL is required"
+      : "DATABASE_URL is required",
+  );
+}
 
 migrate(databaseUrl).catch(async (error) => {
   console.error("Migration failed:", error);
