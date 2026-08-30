@@ -88,7 +88,7 @@ describe("GET /targets/:id", () => {
 });
 
 describe("PATCH /targets/:id", () => {
-  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
+  beforeEach(clearTargets);
 
   it("updates the active status of a target", async () => {
     const createResponse = await request(app).post("/targets").send({ url: "https://example.com" });
