@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
-import { databaseConfig } from "../config/database.js";
+import { databaseConfig } from "@sitepulse/backend/config/database.js";
 
 const migrationsDirectory = path.join(import.meta.dirname, "migrations");
 
