@@ -2,11 +2,13 @@
   "private": true,
   "name": "sitepulse",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "workspaces": [
     "client",
     "server",
-    "worker"
+    "worker",
+    "backend"
   ],
   "scripts": {
   },

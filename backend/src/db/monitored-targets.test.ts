@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import  { testPool } from "./test-client.js";
-import { createMonitoredTarget, listMonitoredTargets, getMonitoredTargetById } from "./monitored-targets.js";
+import { createMonitoredTarget, listMonitoredTargets, listActiveMonitoredTargets, getMonitoredTargetById, updateMonitoredTarget } from "./monitored-targets.js";
 
 describe("Monitored targets", () => {
-  beforeEach(async () => {await testPool.query("DELETE FROM monitored_targets");});
+  beforeEach(async () => {await testPool.query("DELETE FROM scans"); await testPool.query("DELETE FROM monitored_targets");});
   afterAll(async () => {await testPool.end();});
 
   it("creates a monitored target", async () => {
@@ -24,7 +24,6 @@ describe("Monitored targets", () => {
     it("lists monitored targets", async () => {
     const first = await createMonitoredTarget(testPool,"https://example.com");
     const second = await createMonitoredTarget(testPool,"https://example.org");
-
     const targets = await listMonitoredTargets(testPool);
 
     expect(targets).toHaveLength(2);
@@ -45,6 +44,46 @@ describe("Monitored targets", () => {
 
   it("returns null when a monitored target does not exist", async () => {
     const target = await getMonitoredTargetById(testPool,999999);
+
     expect(target).toBeNull();
   });
+
+  it("returns only active monitored targets", async () => {
+  const activeTarget = await createMonitoredTarget(testPool, "https://active.example.com",);
+  const inactiveTarget = await createMonitoredTarget(testPool, "https://inactive.example.com",);
+  await updateMonitoredTarget(testPool, inactiveTarget.id, false);
+  const targets = await listActiveMonitoredTargets(testPool);
+
+  expect(targets).toHaveLength(1);
+  expect(targets[0]).toMatchObject({
+    id: activeTarget.id,
+    url: "https://active.example.com",
+    active: true,
+    });
+  });
+
+  it("returns an empty array when no active targets exist", async () => {
+    const target = await createMonitoredTarget(testPool, "https://inactive.example.com",);
+    await updateMonitoredTarget(testPool, target.id, false);
+    const targets = await listActiveMonitoredTargets(testPool);
+
+    expect(targets).toEqual([]);
+  });
+
+  it("returns all active monitored targets", async () => {
+    await createMonitoredTarget(testPool, "https://one.example.com",);
+    await createMonitoredTarget(testPool, "https://two.example.com",);
+    const inactiveTarget = await createMonitoredTarget(testPool, "https://three.example.com",);
+    await updateMonitoredTarget(testPool, inactiveTarget.id, false);
+    const targets = await listActiveMonitoredTargets(testPool);
+
+    expect(targets).toHaveLength(2);
+    expect(targets.map((target) => target.url)).toEqual(
+      expect.arrayContaining([
+        "https://one.example.com",
+        "https://two.example.com",
+      ]),
+    );
+  });
+
 });

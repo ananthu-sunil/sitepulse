@@ -1,0 +1,25 @@
+{
+  "name": "worker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SitePulse background scan worker",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "start": "node --env-file=../.env dist/worker.js",
+    "dev": "node --env-file=../.env --import=tsx/esm src/worker.ts",
+    "test": "vitest run"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@sitepulse/backend": "1.0.0",
+    "pg": "^8.23.0"
+  }
+}
