@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createMonitoredTarget, listMonitoredTargets, getMonitoredTargetById, updateMonitoredTarget } from "../db/monitored-targets.js";
+import { createMonitoredTarget, listMonitoredTargets, getMonitoredTargetById, updateMonitoredTarget } from "../../../backend/db/monitored-targets.js";
 import { createTargetSchema, updateTargetSchema } from "./schema.js";
 import { pool } from "../db/client.js";
 
