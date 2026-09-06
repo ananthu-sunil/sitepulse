@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import type { ScanResult } from "../scanner/scanner.js";
 
-type ScanRow = {
+export type ScanRow = {
   id: number;
   target_id: number;
   status_code: number | null;
@@ -21,7 +21,7 @@ export type Scan = {
   scannedAt: Date;
 };
 
-function mapRow(row: ScanRow): Scan {
+export function mapRow(row: ScanRow): Scan {
   return {
     id: row.id,
     targetId: row.target_id,
