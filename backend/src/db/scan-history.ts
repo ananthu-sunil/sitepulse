@@ -43,3 +43,25 @@ export async function listScans(db: Pool, targetId: number, limit: number): Prom
   );
   return result.rows.map(mapRow);
 }
+
+export async function getScansSince(db: Pool, targetId: number, since: Date,): Promise<Scan[]> {
+  const result = await db.query<ScanRow>(
+    `
+      SELECT
+        id,
+        target_id,
+        status_code,
+        response_time_ms,
+        available,
+        error,
+        scanned_at
+      FROM scans
+      WHERE target_id = $1
+        AND scanned_at >= $2
+      ORDER BY scanned_at DESC, id DESC
+    `,
+    [targetId, since],
+  );
+
+  return result.rows.map(mapRow);
+}
