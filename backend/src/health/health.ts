@@ -7,8 +7,8 @@ export type HealthSummary = {
   consecutiveFailures: number;
 };
 
-export function calculateHealth(scans: Scan[]): HealthSummary {
-  if (scans.length === 0) {
+export function calculateHealth(latestScan: Scan | null,recentScans: Scan[]): HealthSummary {
+  if (!latestScan) {
     return {
       status: "unknown",
       uptimePercentage: null,
@@ -17,30 +17,43 @@ export function calculateHealth(scans: Scan[]): HealthSummary {
     };
   }
 
-  const latestScan = scans[0];
-  const availableScans = scans.filter((scan) => scan.available);
-  const uptimePercentage = (availableScans.length / scans.length) * 100;
+  if (recentScans.length === 0) {
+    return {
+      status: latestScan.available ? "up" : "down",
+      uptimePercentage: null,
+      averageResponseTimeMs: null,
+      consecutiveFailures: 0,
+    };
+  }
+
+  const availableScans = recentScans.filter(
+    (scan) => scan.available,
+  );
+
+  const uptimePercentage = (availableScans.length / recentScans.length) * 100;
 
   const averageResponseTimeMs =
-    availableScans.reduce(
-      (total, scan) => total + scan.responseTimeMs,
-      0,
-    ) / availableScans.length;
+    availableScans.length > 0
+      ? availableScans.reduce(
+          (total, scan) => total + scan.responseTimeMs,
+          0,
+        ) / availableScans.length
+      : null;
 
   let consecutiveFailures = 0;
 
-  for (const scan of scans) {
+  for (const scan of recentScans) {
     if (scan.available) {
       break;
     }
+
     consecutiveFailures++;
   }
 
   return {
     status: latestScan.available ? "up" : "down",
     uptimePercentage,
-    averageResponseTimeMs:
-      availableScans.length > 0 ? averageResponseTimeMs : null,
+    averageResponseTimeMs,
     consecutiveFailures,
   };
 }

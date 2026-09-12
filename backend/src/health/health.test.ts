@@ -15,8 +15,8 @@ function createScan(overrides: Partial<Scan> = {},): Scan {
 }
 
 describe("calculateHealth", () => {
-  it("returns unknown when there are no scans", () => {
-    expect(calculateHealth([])).toEqual({
+  it("returns unknown when there is no latest scan", () => {
+    expect(calculateHealth(null, [])).toEqual({
       status: "unknown",
       uptimePercentage: null,
       averageResponseTimeMs: null,
@@ -25,7 +25,11 @@ describe("calculateHealth", () => {
   });
 
   it("returns up when the latest scan is available", () => {
-    const scans = [
+    const latestScan = createScan({
+      available: true,
+    });
+
+    const recentScans = [
       createScan({
         id: 2,
         available: true,
@@ -40,30 +44,33 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).status).toBe("up");
+    expect(calculateHealth(latestScan, recentScans).status,).toBe("up");
   });
 
   it("returns down when the latest scan is unavailable", () => {
-    const scans = [
+    const latestScan = createScan({
+      available: false,
+      statusCode: null,
+      error: "timeout",
+      responseTimeMs: 5000,
+    });
+
+    const recentScans = [
       createScan({
         id: 2,
-        available: false,
-        statusCode: null,
-        error: "timeout",
-        responseTimeMs: 5000,
-      }),
-      createScan({
-        id: 1,
         available: true,
-        responseTimeMs: 100,
       }),
     ];
 
-    expect(calculateHealth(scans).status).toBe("down");
+    expect(calculateHealth(latestScan, recentScans).status).toBe("down");
   });
 
-  it("calculates uptime from available scans", () => {
-    const scans = [
+  it("calculates uptime from recent scans", () => {
+    const latestScan = createScan({
+      available: true,
+    });
+
+    const recentScans = [
       createScan({ id: 3, available: true }),
       createScan({ id: 2, available: true }),
       createScan({
@@ -74,11 +81,15 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).uptimePercentage).toBeCloseTo(66.67, 2);
+    expect(calculateHealth(latestScan, recentScans).uptimePercentage).toBeCloseTo(66.67, 2);
   });
 
   it("calculates average response time using available scans only", () => {
-    const scans = [
+    const latestScan = createScan({
+      available: true,
+    });
+
+    const recentScans = [
       createScan({
         id: 3,
         available: true,
@@ -98,11 +109,17 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).averageResponseTimeMs).toBe(200);
+    expect(calculateHealth(latestScan, recentScans).averageResponseTimeMs).toBe(200);
   });
 
-  it("returns null average response time when every scan failed", () => {
-    const scans = [
+  it("returns null average response time when all recent scans failed", () => {
+    const latestScan = createScan({
+      available: false,
+      statusCode: null,
+      error: "timeout",
+    });
+
+    const recentScans = [
       createScan({
         id: 2,
         available: false,
@@ -119,11 +136,18 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).averageResponseTimeMs).toBeNull();
+    expect(
+      calculateHealth(latestScan, recentScans).averageResponseTimeMs,).toBeNull();
   });
 
-  it("counts consecutive failures from the latest scan", () => {
-    const scans = [
+  it("counts consecutive failures from the newest recent scan", () => {
+    const latestScan = createScan({
+      available: false,
+      statusCode: null,
+      error: "timeout",
+    });
+
+    const recentScans = [
       createScan({
         id: 5,
         available: false,
@@ -154,11 +178,15 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).consecutiveFailures).toBe(3);
+    expect(calculateHealth(latestScan, recentScans).consecutiveFailures).toBe(3);
   });
 
-  it("returns zero consecutive failures when the latest scan is available", () => {
-    const scans = [
+  it("returns zero consecutive failures when the newest recent scan is available", () => {
+    const latestScan = createScan({
+      available: true,
+    });
+
+    const recentScans = [
       createScan({
         id: 3,
         available: true,
@@ -177,6 +205,54 @@ describe("calculateHealth", () => {
       }),
     ];
 
-    expect(calculateHealth(scans).consecutiveFailures).toBe(0);
+    expect(calculateHealth(latestScan, recentScans).consecutiveFailures).toBe(0);
+  });
+
+  it("returns current status with null metrics when there are no recent scans", () => {
+    const latestScan = createScan({
+      available: true,
+    });
+
+    expect(calculateHealth(latestScan, [])).toEqual({
+      status: "up",
+      uptimePercentage: null,
+      averageResponseTimeMs: null,
+      consecutiveFailures: 0,
+    });
+  });
+
+  it("returns null average response time when there are no available recent scans", () => {
+    const latestScan = createScan({
+      available: false,
+      statusCode: null,
+      error: "network_error",
+    });
+
+    const recentScans = [
+      createScan({
+        id: 2,
+        available: false,
+        statusCode: null,
+        error: "timeout",
+        responseTimeMs: 5000,
+      }),
+      createScan({
+        id: 1,
+        available: false,
+        statusCode: null,
+        error: "network_error",
+        responseTimeMs: 3000,
+      }),
+    ];
+
+    const health = calculateHealth(
+      latestScan,
+      recentScans,
+    );
+
+    expect(health.status).toBe("down");
+    expect(health.uptimePercentage).toBe(0);
+    expect(health.averageResponseTimeMs).toBeNull();
+    expect(health.consecutiveFailures).toBe(2);
   });
 });
