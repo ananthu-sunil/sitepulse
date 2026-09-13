@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { createMonitoredTarget, listMonitoredTargets, getMonitoredTargetById, updateMonitoredTarget } from "@sitepulse/backend/db/monitored-targets.js";
+import { listScans } from "@sitepulse/backend/db/scan-history.js";
 import { createTargetSchema, updateTargetSchema } from "./schema.js";
 import type { Pool } from "pg";
+
+const DEFAULT_SCAN_HISTORY_LIMIT = 50;
+const MAX_SCAN_HISTORY_LIMIT = 100;
 
 export function createTargetRouter(db: Pool) {
   const router = Router();
@@ -16,6 +20,65 @@ export function createTargetRouter(db: Pool) {
 
       res.status(500).json({
         error: "Failed to list monitored targets",
+      });
+    }
+  });
+
+  router.get("/:id/scans", async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({
+        error: "Invalid target ID",
+      });
+      return;
+    }
+
+    let limit = DEFAULT_SCAN_HISTORY_LIMIT;
+    const rawLimit = req.query.limit;
+
+    if (rawLimit !== undefined) {
+      if (typeof rawLimit !== "string") {
+        res.status(400).json({
+          error: "Invalid limit",
+        });
+        return;
+      }
+
+      const parsedLimit = Number(rawLimit);
+
+      if (
+        !Number.isInteger(parsedLimit) ||
+        parsedLimit <= 0 ||
+        parsedLimit > MAX_SCAN_HISTORY_LIMIT
+      ) {
+        res.status(400).json({
+          error: "Invalid limit",
+        });
+        return;
+      }
+
+      limit = parsedLimit;
+    }
+
+    try {
+      const target = await getMonitoredTargetById(db, id);
+
+      if (!target) {
+        res.status(404).json({
+          error: "Target not found",
+        });
+        return;
+      }
+
+      const scans = await listScans(db, id, limit);
+
+      res.status(200).json(scans);
+    } catch (error) {
+      console.error("Failed to list scan history:", error);
+
+      res.status(500).json({
+        error: "Failed to list scan history",
       });
     }
   });
