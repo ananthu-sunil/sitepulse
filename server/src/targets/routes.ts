@@ -1,7 +1,16 @@
 import { Router } from "express";
-import { createMonitoredTarget, listMonitoredTargets, getMonitoredTargetById, updateMonitoredTarget } from "@sitepulse/backend/db/monitored-targets.js";
+import {
+  createMonitoredTarget,
+  listMonitoredTargets,
+  getMonitoredTargetById,
+  updateMonitoredTarget,
+} from "@sitepulse/backend/db/monitored-targets.js";
+import { listScans } from "@sitepulse/backend/db/scan-history.js";
 import { createTargetSchema, updateTargetSchema } from "./schema.js";
 import type { Pool } from "pg";
+
+const DEFAULT_SCAN_HISTORY_LIMIT = 50;
+const MAX_SCAN_HISTORY_LIMIT = 100;
 
 export function createTargetRouter(db: Pool) {
   const router = Router();
@@ -20,65 +29,156 @@ export function createTargetRouter(db: Pool) {
     }
   });
 
-  router.get("/:id", async (req, res) => {
+  router.get("/:id/scans", async (req, res) => {
     const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {res.status(400).json({error: "Invalid target ID",});
+
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({
+        error: "Invalid target ID",
+      });
       return;
     }
-    try {
-    const target = await getMonitoredTargetById(db, id);
-    if (!target) {res.status(404).json({error: "Target not found",});
+
+    let limit = DEFAULT_SCAN_HISTORY_LIMIT;
+    const rawLimit = req.query.limit;
+
+    if (rawLimit !== undefined) {
+      if (typeof rawLimit !== "string") {
+        res.status(400).json({
+          error: "Invalid limit",
+        });
         return;
       }
+
+      const parsedLimit = Number(rawLimit);
+
+      if (
+        !Number.isInteger(parsedLimit) ||
+        parsedLimit <= 0 ||
+        parsedLimit > MAX_SCAN_HISTORY_LIMIT
+      ) {
+        res.status(400).json({
+          error: "Invalid limit",
+        });
+        return;
+      }
+
+      limit = parsedLimit;
+    }
+
+    try {
+      const target = await getMonitoredTargetById(db, id);
+
+      if (!target) {
+        res.status(404).json({
+          error: "Target not found",
+        });
+        return;
+      }
+
+      const scans = await listScans(db, id, limit);
+
+      res.status(200).json(scans);
+    } catch (error) {
+      console.error("Failed to list scan history:", error);
+
+      res.status(500).json({
+        error: "Failed to list scan history",
+      });
+    }
+  });
+
+  router.get("/:id", async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({
+        error: "Invalid target ID",
+      });
+      return;
+    }
+
+    try {
+      const target = await getMonitoredTargetById(db, id);
+
+      if (!target) {
+        res.status(404).json({
+          error: "Target not found",
+        });
+        return;
+      }
+
       res.status(200).json(target);
     } catch (error) {
       console.error("Failed to get monitored target:", error);
-    res.status(500).json({error: "Failed to get monitored target",});
+
+      res.status(500).json({
+        error: "Failed to get monitored target",
+      });
     }
   });
 
   router.post("/", async (req, res) => {
     const result = createTargetSchema.safeParse(req.body);
 
-  if (!result.success) {res.status(400).json({error: "Invalid target",details: result.error.issues,});
+    if (!result.success) {
+      res.status(400).json({
+        error: "Invalid target",
+        details: result.error.issues,
+      });
       return;
     }
+
     try {
       const target = await createMonitoredTarget(db, result.data.url);
 
       res.status(201).json(target);
-    
     } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "23505") {
-      res.status(409).json({error: "Target URL already exists",});
+      if (error instanceof Error && "code" in error && error.code === "23505") {
+        res.status(409).json({
+          error: "Target URL already exists",
+        });
         return;
       }
+
       console.error("Failed to create monitored target:", error);
-    res.status(500).json({error: "Failed to create monitored target",});
+
+      res.status(500).json({
+        error: "Failed to create monitored target",
+      });
     }
   });
 
   router.patch("/:id", async (req, res) => {
     const id = Number(req.params.id);
 
-  if (!Number.isInteger(id) || id <= 0) {res.status(400).json({error: "Invalid target ID",});
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({
+        error: "Invalid target ID",
+      });
       return;
     }
 
     const result = updateTargetSchema.safeParse(req.body);
 
     if (!result.success) {
-    res.status(400).json({error: "Invalid target", details: result.error.issues,});
+      res.status(400).json({
+        error: "Invalid target",
+        details: result.error.issues,
+      });
       return;
     }
 
     try {
-      const target = await updateMonitoredTarget(db, id, result.data.active,);
+      const target = await updateMonitoredTarget(db, id, result.data.active);
 
       if (!target) {
-      res.status(404).json({error: "Target not found",});
+        res.status(404).json({
+          error: "Target not found",
+        });
         return;
       }
+
       res.status(200).json(target);
     } catch (error) {
       console.error("Failed to update monitored target:", error);
