@@ -10,12 +10,51 @@ services:
     volumes:
       - sitepulse-postgres-data:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sitepulse -d sitepulse"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  migration:
+    image: sitepulse-server:latest
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "backend/dist/db/migrate.js"]
+
+  server:
+    image: sitepulse-server:latest
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+
+  worker:
+    image: sitepulse-worker:latest
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
+      SCAN_INTERVAL_MS: ${SCAN_INTERVAL_MS:-5000}
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+
+  client:
+    image: sitepulse-client:latest
+    depends_on:
+      server:
+        condition: service_started
+    ports:
+      - "8080:80"
 
 volumes:
   sitepulse-postgres-data:
