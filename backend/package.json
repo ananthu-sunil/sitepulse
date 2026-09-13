@@ -10,7 +10,8 @@
     "./db/scans.js": "./dist/db/scans.js",
     "./scanner/scanner.js": "./dist/scanner/scanner.js",
     "./scanner/perform-scan.js": "./dist/scanner/perform-scan.js",
-    "./db/migrate.js": "./dist/db/migrate.js"
+    "./db/migrate.js": "./dist/db/migrate.js",
+    "./health/health-service.js": "./dist/health/health-service.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
