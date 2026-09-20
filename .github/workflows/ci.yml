@@ -47,3 +47,6 @@ jobs:
         run: npm test
         env:
           DATABASE_TEST_URL: postgresql://sitepulse:postgres@localhost:5432/sitepulse_test
+
+      - name: Build production artifacts
+        run: npm run build
