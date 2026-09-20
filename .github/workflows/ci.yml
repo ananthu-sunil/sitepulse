@@ -50,3 +50,12 @@ jobs:
 
       - name: Build production artifacts
         run: npm run build
+
+      - name: Build server Docker image
+        run: docker build -f docker/server/Dockerfile -t sitepulse-server:ci .
+
+      - name: Build worker Docker image
+        run: docker build -f docker/worker/Dockerfile -t sitepulse-worker:ci .
+
+      - name: Build client Docker image
+        run: docker build -f docker/client/Dockerfile -t sitepulse-client:ci .
