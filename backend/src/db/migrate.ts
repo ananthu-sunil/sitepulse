@@ -54,3 +54,4 @@ export async function migrate(databaseUrl: string, schema: string = "public",) {
     await pool.end();
   }
 }
+
