@@ -16,7 +16,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc && copyfiles -u 2 \"src/db/migrations/*.sql\" dist/db/migrations",
+    "build": "tsc && copyfiles -u 3 \"src/db/migrations/*.sql\" dist/db/migrations",
     "test": "node --env-file-if-exists=../.env ../node_modules/vitest/vitest.mjs run",
     "test:watch": "vitest"
   },
