@@ -24,7 +24,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["node", "backend/dist/db/migrate.js"]
+    command: ["node", "backend/dist/db/migrate-cli.js"]
 
   server:
     image: sitepulse-server:latest
