@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: sitepulse_test
+          POSTGRES_USER: sitepulse
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U sitepulse -d sitepulse_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build --workspace=@sitepulse/backend
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_TEST_URL: postgresql://sitepulse:postgres@localhost:5432/sitepulse_test
+
+      - name: Build production artifacts
+        run: npm run build
+
+      - name: Build server Docker image
+        run: docker build -f docker/server/Dockerfile -t sitepulse-server:ci .
+
+      - name: Build worker Docker image
+        run: docker build -f docker/worker/Dockerfile -t sitepulse-worker:ci .
+
+      - name: Build client Docker image
+        run: docker build -f docker/client/Dockerfile -t sitepulse-client:ci .

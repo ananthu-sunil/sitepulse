@@ -11,6 +11,9 @@
     "backend"
   ],
   "scripts": {
+    "typecheck": "npm run typecheck --workspace=@sitepulse/backend && npm run typecheck --workspace=server && npm run typecheck --workspace=worker",
+    "test": "npm run test --workspace=@sitepulse/backend && npm run test --workspace=server && npm run test --workspace=worker",
+    "build": "npm run build --workspace=@sitepulse/backend && npm run build --workspace=server && npm run build --workspace=worker && npm run build --workspace=client"
   },
   "repository": {
     "type": "git",
