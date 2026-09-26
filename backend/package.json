@@ -9,10 +9,11 @@
     "./db/monitored-targets.js": "./dist/db/monitored-targets.js",
     "./db/scans.js": "./dist/db/scans.js",
     "./db/scan-history.js": "./dist/db/scan-history.js",
-    "./scanner/scanner.js": "./dist/scanner/scanner.js",
-    "./scanner/perform-scan.js": "./dist/scanner/perform-scan.js",
     "./db/migrate.js": "./dist/db/migrate.js",
-    "./health/health-service.js": "./dist/health/health-service.js"
+    "./health/health-service.js": "./dist/health/health-service.js",
+    "./network/ip-safety.js": "./dist/network/ip-safety.js",
+    "./scanner/scanner.js": "./dist/scanner/scanner.js",
+    "./scanner/perform-scan.js": "./dist/scanner/perform-scan.js"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

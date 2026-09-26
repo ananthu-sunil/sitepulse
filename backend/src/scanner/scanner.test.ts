@@ -1,10 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { scanTarget } from "./scanner.js";
+import { resolveHostname } from "../network/resolve-host.js";
+
+vi.mock("../network/resolve-host.js", () => ({resolveHostname: vi.fn(),}));
+const mockedResolveHostname = vi.mocked(resolveHostname);
 
 describe("scanTarget", () => {
-  afterEach(() => {vi.restoreAllMocks();});
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockedResolveHostname.mockReset();
+  });
 
   it("returns an available result for a successful response", async () => {
+    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }),);
     const result = await scanTarget("https://example.com");
 
@@ -15,6 +23,7 @@ describe("scanTarget", () => {
   });
 
   it("marks a non-successful HTTP response as unavailable", async () => {
+    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }),);
     const result = await scanTarget("https://example.com");
 
@@ -23,6 +32,7 @@ describe("scanTarget", () => {
   });
 
   it("returns a timeout result when the request times out", async () => {
+    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new DOMException("The operation was aborted", "AbortError"),);
     const result = await scanTarget("https://example.com", 5000);
 
@@ -34,6 +44,81 @@ describe("scanTarget", () => {
     const result = await scanTarget("https://example.com");
     
     expect(result).toMatchObject({statusCode: null, available: false, error: "network_error",});
+  });
+
+  it("rejects a literal private IP as unsafe", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const result = await scanTarget("http://127.0.0.1");
+
+    expect(result).toEqual({
+      statusCode: null,
+      responseTimeMs: expect.any(Number),
+      available: false,
+      error: "unsafe_target",
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a hostname that resolves to a private IP", async () => {
+    mockedResolveHostname.mockResolvedValue(["10.0.0.1"]);
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const result = await scanTarget("https://example.com");
+
+    expect(result).toEqual({
+      statusCode: null,
+      responseTimeMs: expect.any(Number),
+      available: false,
+      error: "unsafe_target",
+    });
+
+    expect(mockedResolveHostname).toHaveBeenCalledWith("example.com");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a hostname if any resolved IP is unsafe", async () => {
+    mockedResolveHostname.mockResolvedValue(["8.8.8.8", "192.168.1.10"]);
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const result = await scanTarget("https://example.com");
+
+    expect(result.error).toBe("unsafe_target");
+    expect(result.available).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+
+  });
+
+  it("fetches when all resolved IPs are safe", async () => {
+    mockedResolveHostname.mockResolvedValue(["8.8.8.8", "1.1.1.1"]);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(null, {
+          status: 200,
+        }),
+      );
+
+    const result = await scanTarget("https://example.com");
+
+    expect(result.statusCode).toBe(200);
+    expect(result.available).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+  });
+
+  it("returns network_error when hostname resolution fails", async () => {
+    mockedResolveHostname.mockRejectedValue(new Error("DNS resolution failed"));
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    const result = await scanTarget("https://example.com");
+
+    expect(result).toEqual({
+      statusCode: null,
+      responseTimeMs: expect.any(Number),
+      available: false,
+      error: "network_error",
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
 });
