@@ -42,18 +42,19 @@ describe("isSafeTargetUrl", () => {
   expect(isSafeTargetUrl(new URL("http://0.0.0.0"))).toBe(false);
   });
 
-    it("rejects unspecified IPv6", () => {
-    expect(isSafeTargetUrl(new URL("http://[::]"))).toBe(false);
-    });
+  it("rejects unspecified IPv6", () => {
+  expect(isSafeTargetUrl(new URL("http://[::]"))).toBe(false);
+  });
 
-    it("rejects IPv6 unique-local addresses", () => {
-    expect(isSafeTargetUrl(new URL("http://[fd00::1]"))).toBe(false);
-    });
+  it("rejects IPv6 unique-local addresses", () => {
+  expect(isSafeTargetUrl(new URL("http://[fd00::1]"))).toBe(false);
+  });
 
-    it("rejects IPv6 link-local addresses", () => {
-    expect(isSafeTargetUrl(new URL("http://[fe80::1]"))).toBe(false);
-});
-it("accepts a public IPv4 address", () => {
+  it("rejects IPv6 link-local addresses", () => {
+  expect(isSafeTargetUrl(new URL("http://[fe80::1]"))).toBe(false);
+  });
+  
+  it("accepts a public IPv4 address", () => {
   expect(isSafeTargetUrl(new URL("http://8.8.8.8"))).toBe(true);
-});
+  });
 });
