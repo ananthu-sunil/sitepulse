@@ -62,6 +62,12 @@ function isUnspecifiedIpv4(address: string): boolean {
   return address.split(".").every((octet) => Number(octet) === 0);
 }
 
+function isMulticastIpv4(address: string): boolean {
+  const first = address.split(".").map(Number)[0];
+
+  return first >= 224 && first <= 239;
+}
+
 function isUnsafeIpv4(address: string): boolean {
   return (
     isPrivateIpv4(address) ||
@@ -71,7 +77,8 @@ function isUnsafeIpv4(address: string): boolean {
     isCarrierGradeNatIpv4(address) ||
     isIetfProtocolAssignmentIpv4(address) ||
     isBenchmarkingIpv4(address) ||
-    isDocumentationIpv4(address)
+    isDocumentationIpv4(address) ||
+    isMulticastIpv4(address)
   );
 }
 
@@ -100,7 +107,8 @@ function isUnsafeIpv6(address: string): boolean {
     normalized.startsWith("fe8") ||
     normalized.startsWith("fe9") ||
     normalized.startsWith("fea") ||
-    normalized.startsWith("feb")
+    normalized.startsWith("feb") ||
+    normalized.startsWith("ff")
   ) {
     return true;
   }

@@ -124,10 +124,7 @@ async function requestValidatedUrl(
       throw new DOMException("The operation was aborted", "AbortError");
     }
 
-    throw new SafeFetchError(
-      "network_error",
-      "Outbound request failed",
-    );
+    throw new SafeFetchError("network_error", "Outbound request failed");
   } finally {
     if (signal?.aborted) {
       await client.destroy();
@@ -196,10 +193,7 @@ export async function safeFetch(
     try {
       target = new URL(response.location, target);
     } catch {
-      throw new SafeFetchError(
-        "network_error",
-        "Invalid redirect location",
-      );
+      throw new SafeFetchError("network_error", "Invalid redirect location");
     }
   }
 }

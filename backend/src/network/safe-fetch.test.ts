@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createValidatedConnector, safeFetch, SafeFetchError } from "./safe-fetch.js";
+import {
+  createValidatedConnector,
+  safeFetch,
+  SafeFetchError,
+} from "./safe-fetch.js";
 import { resolveHostname } from "./resolve-host.js";
 import { isSafeIpAddress } from "./ip-safety.js";
 import { readFile } from "node:fs/promises";
@@ -18,9 +22,8 @@ vi.mock("./resolve-host.js", () => ({
 }));
 
 vi.mock("./ip-safety.js", async () => {
-  const actual = await vi.importActual<typeof import("./ip-safety.js")>(
-    "./ip-safety.js",
-  );
+  const actual =
+    await vi.importActual<typeof import("./ip-safety.js")>("./ip-safety.js");
 
   return {
     ...actual,
@@ -35,6 +38,7 @@ describe("safeFetch", () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     mockedResolveHostname.mockReset();
+    mockedIsSafeIpAddress.mockReset();
 
     if (!server) {
       return;
@@ -60,17 +64,13 @@ describe("safeFetch", () => {
   });
 
   it("rejects unsupported protocols", async () => {
-    await expect(
-      safeFetch("ftp://example.com/file"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("ftp://example.com/file")).rejects.toMatchObject({
       code: "unsafe_target",
     });
   });
 
   it("rejects a literal unsafe IP address", async () => {
-    await expect(
-      safeFetch("http://127.0.0.1"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("http://127.0.0.1")).rejects.toMatchObject({
       code: "unsafe_target",
     });
   });
@@ -78,9 +78,7 @@ describe("safeFetch", () => {
   it("rejects a hostname that resolves to an unsafe IP", async () => {
     mockedResolveHostname.mockResolvedValue(["10.0.0.1"]);
 
-    await expect(
-      safeFetch("https://example.com"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("https://example.com")).rejects.toMatchObject({
       code: "unsafe_target",
     });
 
@@ -88,14 +86,9 @@ describe("safeFetch", () => {
   });
 
   it("rejects a hostname if any resolved address is unsafe", async () => {
-    mockedResolveHostname.mockResolvedValue([
-      "93.184.216.34",
-      "192.168.1.10",
-    ]);
+    mockedResolveHostname.mockResolvedValue(["93.184.216.34", "192.168.1.10"]);
 
-    await expect(
-      safeFetch("https://example.com"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("https://example.com")).rejects.toMatchObject({
       code: "unsafe_target",
     });
   });
@@ -103,21 +96,15 @@ describe("safeFetch", () => {
   it("rejects a hostname that resolves to no addresses", async () => {
     mockedResolveHostname.mockResolvedValue([]);
 
-    await expect(
-      safeFetch("https://example.com"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("https://example.com")).rejects.toMatchObject({
       code: "network_error",
     });
   });
 
   it("returns network_error when DNS resolution fails", async () => {
-    mockedResolveHostname.mockRejectedValue(
-      new Error("DNS resolution failed"),
-    );
+    mockedResolveHostname.mockRejectedValue(new Error("DNS resolution failed"));
 
-    await expect(
-      safeFetch("https://example.com"),
-    ).rejects.toMatchObject({
+    await expect(safeFetch("https://example.com")).rejects.toMatchObject({
       code: "network_error",
     });
   });
@@ -159,7 +146,7 @@ describe("safeFetch", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-spike.test";
+    const hostname = "sitepulse.test";
     const validatedAddress = "127.0.0.1";
 
     const client = new Client(`http://${hostname}:${port}`, {
@@ -184,11 +171,11 @@ describe("safeFetch", () => {
 
   it("connects to the validated IP while preserving HTTPS hostname identity", async () => {
     const key = await readFile(
-      new URL("./fixtures/spike-key.pem", import.meta.url),
+      new URL("./fixtures/test-key.pem", import.meta.url),
     );
 
     const cert = await readFile(
-      new URL("./fixtures/spike-cert.pem", import.meta.url),
+      new URL("./fixtures/test-cert.pem", import.meta.url),
     );
 
     let remoteAddress: string | undefined;
@@ -221,7 +208,7 @@ describe("safeFetch", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-spike.test";
+    const hostname = "sitepulse.test";
     const validatedAddress = "127.0.0.1";
 
     const client = new Client(`https://${hostname}:${port}`, {
@@ -278,13 +265,11 @@ describe("safeFetch", () => {
     mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
 
     const response = await safeFetch(
-      `http://sitepulse-spike.test:${address.port}/start`,
+      `http://sitepulse.test:${address.port}/start`,
     );
 
     expect(response.statusCode).toBe(200);
-    expect(mockedResolveHostname).toHaveBeenCalledWith(
-      "sitepulse-spike.test",
-    );
+    expect(mockedResolveHostname).toHaveBeenCalledWith("sitepulse.test");
   });
 
   it("revalidates the destination of a redirect", async () => {
@@ -314,15 +299,12 @@ describe("safeFetch", () => {
       .mockResolvedValueOnce(["10.0.0.1"]);
 
     await expect(
-      safeFetch(`http://sitepulse-spike.test:${address.port}/start`),
+      safeFetch(`http://sitepulse.test:${address.port}/start`),
     ).rejects.toMatchObject({
       code: "unsafe_target",
     });
 
-    expect(mockedResolveHostname).toHaveBeenNthCalledWith(
-      1,
-      "sitepulse-spike.test",
-    );
+    expect(mockedResolveHostname).toHaveBeenNthCalledWith(1, "sitepulse.test");
 
     expect(mockedResolveHostname).toHaveBeenNthCalledWith(
       2,
@@ -355,7 +337,7 @@ describe("safeFetch", () => {
     mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
 
     await expect(
-      safeFetch(`http://sitepulse-spike.test:${address.port}/start`),
+      safeFetch(`http://sitepulse.test:${address.port}/start`),
     ).rejects.toMatchObject({
       code: "unsafe_target",
     });
@@ -368,7 +350,7 @@ describe("safeFetch", () => {
 
     server = createHttpServer((request, response) => {
       const current = Number(
-        new URL(request.url ?? "/", "http://sitepulse-spike.test").searchParams.get(
+        new URL(request.url ?? "/", "http://sitepulse.test").searchParams.get(
           "redirect",
         ) ?? "0",
       );
@@ -392,9 +374,7 @@ describe("safeFetch", () => {
     mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
 
     await expect(
-      safeFetch(
-        `http://sitepulse-spike.test:${address.port}/?redirect=0`,
-      ),
+      safeFetch(`http://sitepulse.test:${address.port}/?redirect=0`),
     ).rejects.toMatchObject({
       code: "network_error",
     });

@@ -2,12 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { resolveHostname } from "./resolve-host.js";
 
 const { mockedLookup } = vi.hoisted(() => ({
-  mockedLookup: vi.fn<
-    (
-      hostname: string,
-      options: { all: true },
-    ) => Promise<Array<{ address: string; family: number }>>
-  >(),
+  mockedLookup:
+    vi.fn<
+      (
+        hostname: string,
+        options: { all: true },
+      ) => Promise<Array<{ address: string; family: number }>>
+    >(),
 }));
 
 vi.mock("node:dns/promises", () => ({
@@ -40,8 +41,8 @@ describe("resolveHostname", () => {
   it("rejects when DNS resolution fails", async () => {
     mockedLookup.mockRejectedValue(new Error("DNS resolution failed"));
 
-    await expect(
-      resolveHostname("example.com"),
-    ).rejects.toThrow("DNS resolution failed");
+    await expect(resolveHostname("example.com")).rejects.toThrow(
+      "DNS resolution failed",
+    );
   });
 });

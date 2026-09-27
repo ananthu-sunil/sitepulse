@@ -15,7 +15,7 @@ describe("isIpAddress", () => {
   });
 
   it("rejects malformed IPv4 addresses", () => {
-  expect(isIpAddress("999.999.999.999")).toBe(false);
+    expect(isIpAddress("999.999.999.999")).toBe(false);
   });
 
   it("rejects invalid addresses", () => {
@@ -111,5 +111,15 @@ describe("isSafeIpAddress", () => {
   it("rejects documentation IPv4 addresses", () => {
     expect(isSafeIpAddress("198.51.100.1")).toBe(false);
     expect(isSafeIpAddress("203.0.113.1")).toBe(false);
+  });
+
+  it("rejects IPv4 multicast addresses", () => {
+    expect(isSafeIpAddress("224.0.0.1")).toBe(false);
+    expect(isSafeIpAddress("239.255.255.255")).toBe(false);
+  });
+
+  it("rejects IPv6 multicast addresses", () => {
+    expect(isSafeIpAddress("ff02::1")).toBe(false);
+    expect(isSafeIpAddress("ff0e::1")).toBe(false);
   });
 });
