@@ -1,8 +1,9 @@
-import {afterEach, describe, expect, it, vi} from "vitest";
-import {createValidatedConnector, safeFetch, SafeFetchError} from "./safe-fetch.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createValidatedConnector, safeFetch, SafeFetchError } from "./safe-fetch.js";
 import { resolveHostname } from "./resolve-host.js";
-import {isSafeIpAddress} from "./ip-safety.js";
+import { isSafeIpAddress } from "./ip-safety.js";
 import { readFile } from "node:fs/promises";
+import { TLSSocket } from "node:tls";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { Client } from "undici";
@@ -202,7 +203,7 @@ describe("safeFetch", () => {
       (request, response) => {
         remoteAddress = request.socket.remoteAddress;
         hostHeader = request.headers.host;
-        serverName = request.socket.servername;
+        serverName = (request.socket as TLSSocket).servername || undefined;
 
         response.writeHead(200);
         response.end("ok");

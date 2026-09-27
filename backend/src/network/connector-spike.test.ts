@@ -3,6 +3,7 @@ import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { afterEach, describe, expect, it } from "vitest";
 import { Client, buildConnector } from "undici";
+import { TLSSocket } from "node:tls";
 
 describe("validated IP connector spike", () => {
   let server:
@@ -106,7 +107,7 @@ describe("validated IP connector spike", () => {
       (request, response) => {
         remoteAddress = request.socket.remoteAddress;
         hostHeader = request.headers.host;
-        serverName = request.socket.servername;
+        serverName = (request.socket as TLSSocket).servername || undefined;
 
         response.writeHead(200);
         response.end("ok");

@@ -1,12 +1,18 @@
-import { lookup } from "node:dns/promises";
 import { describe, expect, it, vi } from "vitest";
 import { resolveHostname } from "./resolve-host.js";
 
-vi.mock("node:dns/promises", () => ({
-  lookup: vi.fn(),
+const { mockedLookup } = vi.hoisted(() => ({
+  mockedLookup: vi.fn<
+    (
+      hostname: string,
+      options: { all: true },
+    ) => Promise<Array<{ address: string; family: number }>>
+  >(),
 }));
 
-const mockedLookup = vi.mocked(lookup);
+vi.mock("node:dns/promises", () => ({
+  lookup: mockedLookup,
+}));
 
 describe("resolveHostname", () => {
   it("returns all resolved IP addresses", async () => {
