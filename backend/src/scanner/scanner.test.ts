@@ -1,124 +1,116 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { scanTarget } from "./scanner.js";
-import { resolveHostname } from "../network/resolve-host.js";
+import { SafeFetchError, safeFetch } from "../network/safe-fetch.js";
 
-vi.mock("../network/resolve-host.js", () => ({resolveHostname: vi.fn(),}));
-const mockedResolveHostname = vi.mocked(resolveHostname);
+vi.mock("../network/safe-fetch.js", () => ({
+  safeFetch: vi.fn(),
+  SafeFetchError: class SafeFetchError extends Error {
+    constructor(
+      public readonly code: "unsafe_target" | "network_error",
+      message: string,
+    ) {
+      super(message);
+      this.name = "SafeFetchError";
+    }
+  },
+}));
+
+const mockedSafeFetch = vi.mocked(safeFetch);
 
 describe("scanTarget", () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    mockedResolveHostname.mockReset();
+    mockedSafeFetch.mockReset();
   });
 
   it("returns an available result for a successful response", async () => {
-    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }),);
+    mockedSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      location: null,
+    });
+
     const result = await scanTarget("https://example.com");
 
     expect(result.statusCode).toBe(200);
     expect(result.responseTimeMs).toEqual(expect.any(Number));
     expect(result.responseTimeMs).toBeGreaterThanOrEqual(0);
     expect(result.available).toBe(true);
+
+    expect(mockedSafeFetch).toHaveBeenCalledWith(
+      "https://example.com",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 
   it("marks a non-successful HTTP response as unavailable", async () => {
-    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 500 }),);
+    mockedSafeFetch.mockResolvedValue({
+      statusCode: 500,
+      location: null,
+    });
+
     const result = await scanTarget("https://example.com");
 
     expect(result.statusCode).toBe(500);
     expect(result.available).toBe(false);
+    expect(result.error).toBeUndefined();
   });
 
   it("returns a timeout result when the request times out", async () => {
-    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new DOMException("The operation was aborted", "AbortError"),);
-    const result = await scanTarget("https://example.com", 5000);
+    mockedSafeFetch.mockRejectedValue(
+      new DOMException("The operation was aborted", "AbortError"),
+    );
 
-    expect(result).toMatchObject({statusCode: null, available: false, error: "timeout",});
-  });
-
-  it("returns a network error result when the request fails", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"),);
     const result = await scanTarget("https://example.com");
-    
-    expect(result).toMatchObject({statusCode: null, available: false, error: "network_error",});
+
+    expect(result).toMatchObject({
+      statusCode: null,
+      available: false,
+      error: "timeout",
+    });
   });
 
-  it("rejects a literal private IP as unsafe", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch");
-    const result = await scanTarget("http://127.0.0.1");
+  it("returns unsafe_target when safeFetch rejects an unsafe target", async () => {
+    mockedSafeFetch.mockRejectedValue(
+      new SafeFetchError(
+        "unsafe_target",
+        "Target resolves to an unsafe IP address",
+      ),
+    );
 
-    expect(result).toEqual({
+    const result = await scanTarget("https://example.com");
+
+    expect(result).toMatchObject({
       statusCode: null,
-      responseTimeMs: expect.any(Number),
       available: false,
       error: "unsafe_target",
     });
-
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a hostname that resolves to a private IP", async () => {
-    mockedResolveHostname.mockResolvedValue(["10.0.0.1"]);
-    const fetchMock = vi.spyOn(globalThis, "fetch");
+  it("returns network_error when safeFetch encounters a network error", async () => {
+    mockedSafeFetch.mockRejectedValue(
+      new SafeFetchError("network_error", "Outbound request failed"),
+    );
+
     const result = await scanTarget("https://example.com");
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       statusCode: null,
-      responseTimeMs: expect.any(Number),
-      available: false,
-      error: "unsafe_target",
-    });
-
-    expect(mockedResolveHostname).toHaveBeenCalledWith("example.com");
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("rejects a hostname if any resolved IP is unsafe", async () => {
-    mockedResolveHostname.mockResolvedValue(["8.8.8.8", "192.168.1.10"]);
-    const fetchMock = vi.spyOn(globalThis, "fetch");
-    const result = await scanTarget("https://example.com");
-
-    expect(result.error).toBe("unsafe_target");
-    expect(result.available).toBe(false);
-    expect(fetchMock).not.toHaveBeenCalled();
-
-  });
-
-  it("fetches when all resolved IPs are safe", async () => {
-    mockedResolveHostname.mockResolvedValue(["8.8.8.8", "1.1.1.1"]);
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(
-        new Response(null, {
-          status: 200,
-        }),
-      );
-
-    const result = await scanTarget("https://example.com");
-
-    expect(result.statusCode).toBe(200);
-    expect(result.available).toBe(true);
-    expect(result.error).toBeUndefined();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-  });
-
-  it("returns network_error when hostname resolution fails", async () => {
-    mockedResolveHostname.mockRejectedValue(new Error("DNS resolution failed"));
-    const fetchMock = vi.spyOn(globalThis, "fetch");
-    const result = await scanTarget("https://example.com");
-
-    expect(result).toEqual({
-      statusCode: null,
-      responseTimeMs: expect.any(Number),
       available: false,
       error: "network_error",
     });
-
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("returns network_error for an unexpected error", async () => {
+    mockedSafeFetch.mockRejectedValue(new Error("Unexpected failure"));
+
+    const result = await scanTarget("https://example.com");
+
+    expect(result).toMatchObject({
+      statusCode: null,
+      available: false,
+      error: "network_error",
+    });
+  });
 });

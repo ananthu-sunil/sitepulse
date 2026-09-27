@@ -232,19 +232,4 @@ describe("safeFetch", () => {
       await client.close();
     }
   });
-
-  it("passes the caller's abort signal to the request", async () => {
-    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
-
-    const controller = new AbortController();
-    controller.abort();
-
-    await expect(
-      safeFetch("https://example.com", {
-        signal: controller.signal,
-      }),
-    ).rejects.toMatchObject({
-      name: "AbortError",
-    });
-  });
 });

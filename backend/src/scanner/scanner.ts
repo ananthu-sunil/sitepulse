@@ -1,5 +1,4 @@
-import { isIpAddress, isSafeIpAddress } from "../network/ip-safety.js";
-import { resolveHostname } from "../network/resolve-host.js";
+import { SafeFetchError, safeFetch } from "../network/safe-fetch.js";
 
 export type ScanError = "timeout" | "network_error" | "unsafe_target";
 
@@ -16,40 +15,15 @@ export async function scanTarget(url: string, timeoutMs = 5000): Promise<ScanRes
   const start = performance.now();
 
   try {
-    const target = new URL(url);
-
-    if (isIpAddress(target.hostname)) {
-      if (!isSafeIpAddress(target.hostname)) {
-        return {
-          statusCode: null,
-          responseTimeMs: Math.round(performance.now() - start),
-          available: false,
-          error: "unsafe_target",
-        };
-      }
-    } else {
-      const addresses = await resolveHostname(target.hostname);
-
-      if (addresses.some((address) => !isSafeIpAddress(address))) {
-        return {
-          statusCode: null,
-          responseTimeMs: Math.round(performance.now() - start),
-          available: false,
-          error: "unsafe_target",
-        };
-      }
-    }
-
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       signal: controller.signal,
     });
 
     return {
-      statusCode: response.status,
+      statusCode: response.statusCode,
       responseTimeMs: Math.round(performance.now() - start),
-      available: response.ok,
+      available: response.statusCode >= 200 && response.statusCode < 300,
     };
-    
   } catch (error) {
     const responseTimeMs = Math.round(performance.now() - start);
 
@@ -61,6 +35,16 @@ export async function scanTarget(url: string, timeoutMs = 5000): Promise<ScanRes
         error: "timeout",
       };
     }
+
+    if (error instanceof SafeFetchError) {
+      return {
+        statusCode: null,
+        responseTimeMs,
+        available: false,
+        error: error.code,
+      };
+    }
+
     return {
       statusCode: null,
       responseTimeMs,
