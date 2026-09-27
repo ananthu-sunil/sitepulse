@@ -1,18 +1,15 @@
+import { isIP } from "node:net";
 
-function isIpv4Address(address: string): boolean {
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(address);
+function normalizeIpAddress(address: string): string {
+  return address.replace(/^\[|\]$/g, "");
 }
 
 export function isIpAddress(address: string): boolean {
-  return isIpv4Address(address) || address.includes(":");
+  return isIP(normalizeIpAddress(address)) !== 0;
 }
 
 function isPrivateIpv4(address: string): boolean {
   const octets = address.split(".").map(Number);
-
-  if (octets.some((octet) => octet < 0 || octet > 255)) {
-    return false;
-  }
 
   const [first, second] = octets;
 
@@ -24,51 +21,74 @@ function isPrivateIpv4(address: string): boolean {
 }
 
 function isLoopbackIpv4(address: string): boolean {
-  const octets = address.split(".").map(Number);
-
-  return octets[0] === 127;
+  return address.split(".").map(Number)[0] === 127;
 }
 
 function isLinkLocalIpv4(address: string): boolean {
-  const octets = address.split(".").map(Number);
+  const [first, second] = address.split(".").map(Number);
 
-  return octets[0] === 169 && octets[1] === 254;
+  return first === 169 && second === 254;
 }
 
 function isUnspecifiedIpv4(address: string): boolean {
-  const octets = address.split(".").map(Number);
+  return address.split(".").every((octet) => Number(octet) === 0);
+}
 
-  return octets.every((octet) => octet === 0);
+function isUnsafeIpv4(address: string): boolean {
+  return (
+    isPrivateIpv4(address) ||
+    isLoopbackIpv4(address) ||
+    isLinkLocalIpv4(address) ||
+    isUnspecifiedIpv4(address)
+  );
+}
+
+function getMappedIpv4(address: string): string | null {
+  const normalized = normalizeIpAddress(address).toLowerCase();
+
+  if (!normalized.startsWith("::ffff:")) {
+    return null;
+  }
+
+  const mappedAddress = normalized.slice("::ffff:".length);
+
+  return isIP(mappedAddress) === 4 ? mappedAddress : null;
 }
 
 function isUnsafeIpv6(address: string): boolean {
-  const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
+  const normalized = normalizeIpAddress(address).toLowerCase();
 
-  return (
-    normalized === "::" ||
-    normalized === "::1" ||
+  if (normalized === "::" || normalized === "::1") {
+    return true;
+  }
+
+  if (
     normalized.startsWith("fc") ||
     normalized.startsWith("fd") ||
     normalized.startsWith("fe8") ||
     normalized.startsWith("fe9") ||
     normalized.startsWith("fea") ||
     normalized.startsWith("feb")
-  );
+  ) {
+    return true;
+  }
+
+  const mappedIpv4 = getMappedIpv4(normalized);
+
+  return mappedIpv4 !== null && isUnsafeIpv4(mappedIpv4);
 }
 
 export function isSafeIpAddress(address: string): boolean {
-  if (isIpv4Address(address)) {
-    return !(
-      isPrivateIpv4(address) ||
-      isLoopbackIpv4(address) ||
-      isLinkLocalIpv4(address) ||
-      isUnspecifiedIpv4(address)
-    );
+  const normalized = normalizeIpAddress(address);
+  const addressType = isIP(normalized);
+
+  if (addressType === 4) {
+    return !isUnsafeIpv4(normalized);
   }
 
-  if (address.includes(":")) {
-    return !isUnsafeIpv6(address);
+  if (addressType === 6) {
+    return !isUnsafeIpv6(normalized);
   }
 
-  return true;
+  return false;
 }

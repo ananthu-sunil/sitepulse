@@ -13,6 +13,14 @@ describe("isIpAddress", () => {
   it("rejects hostnames as IP addresses", () => {
     expect(isIpAddress("example.com")).toBe(false);
   });
+
+  it("rejects malformed IPv4 addresses", () => {
+  expect(isIpAddress("999.999.999.999")).toBe(false);
+  });
+
+  it("rejects invalid addresses", () => {
+    expect(isIpAddress("not-an-ip")).toBe(false);
+  });
 });
 
 describe("isSafeIpAddress", () => {
@@ -58,5 +66,33 @@ describe("isSafeIpAddress", () => {
 
   it("rejects IPv6 link-local addresses", () => {
     expect(isSafeIpAddress("fe80::1")).toBe(false);
+  });
+
+  it("rejects malformed IPv4 addresses", () => {
+    expect(isSafeIpAddress("999.999.999.999")).toBe(false);
+  });
+
+  it("rejects IPv4-mapped IPv6 loopback", () => {
+    expect(isSafeIpAddress("::ffff:127.0.0.1")).toBe(false);
+  });
+
+  it("rejects IPv4-mapped IPv6 private addresses", () => {
+    expect(isSafeIpAddress("::ffff:10.0.0.1")).toBe(false);
+  });
+
+  it("rejects IPv4-mapped IPv6 link-local addresses", () => {
+    expect(isSafeIpAddress("::ffff:169.254.169.254")).toBe(false);
+  });
+
+  it("accepts an IPv4-mapped IPv6 public address", () => {
+    expect(isSafeIpAddress("::ffff:8.8.8.8")).toBe(true);
+  });
+
+  it("rejects non-IP values", () => {
+    expect(isSafeIpAddress("example.com")).toBe(false);
+  });
+
+  it("rejects a bracketed IPv6 loopback address", () => {
+    expect(isSafeIpAddress("[::1]")).toBe(false);
   });
 });
