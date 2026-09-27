@@ -2,6 +2,8 @@ import { Client, buildConnector } from "undici";
 import { isIpAddress, isSafeIpAddress } from "./ip-safety.js";
 import { resolveHostname } from "./resolve-host.js";
 
+const MAX_REDIRECTS = 5;
+
 export type SafeFetchOptions = {
   signal?: AbortSignal;
 };
@@ -83,40 +85,14 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
-export async function safeFetch(
-  url: string,
-  options: SafeFetchOptions = {},
-): Promise<SafeFetchResponse> {
-  let target: URL;
-
-  try {
-    target = new URL(url);
-  } catch {
-    throw new SafeFetchError("unsafe_target", "Invalid target URL");
-  }
-
-  if (target.protocol !== "http:" && target.protocol !== "https:") {
-    throw new SafeFetchError(
-      "unsafe_target",
-      "Only HTTP and HTTPS targets are allowed",
-    );
-  }
-
-  let validatedAddress: string;
-
-  try {
-    validatedAddress = await getValidatedAddress(target);
-  } catch (error) {
-    if (error instanceof SafeFetchError) {
-      throw error;
-    }
-
-    throw new SafeFetchError(
-      "network_error",
-      "Failed to resolve target hostname",
-    );
-  }
-
+async function requestValidatedUrl(
+  target: URL,
+  validatedAddress: string,
+  signal?: AbortSignal,
+): Promise<{
+  statusCode: number;
+  location: string | null;
+}> {
   const client = new Client(target.origin, {
     connect: createValidatedConnector(validatedAddress),
   });
@@ -125,7 +101,7 @@ export async function safeFetch(
     const response = await client.request({
       path: `${target.pathname}${target.search}`,
       method: "GET",
-      signal: options.signal,
+      signal,
     });
 
     const location =
@@ -153,10 +129,77 @@ export async function safeFetch(
       "Outbound request failed",
     );
   } finally {
-    if (options.signal?.aborted) {
+    if (signal?.aborted) {
       await client.destroy();
     } else {
       await client.close();
+    }
+  }
+}
+
+export async function safeFetch(
+  url: string,
+  options: SafeFetchOptions = {},
+): Promise<SafeFetchResponse> {
+  let target: URL;
+
+  try {
+    target = new URL(url);
+  } catch {
+    throw new SafeFetchError("unsafe_target", "Invalid target URL");
+  }
+
+  for (let redirectCount = 0; ; redirectCount++) {
+    if (target.protocol !== "http:" && target.protocol !== "https:") {
+      throw new SafeFetchError(
+        "unsafe_target",
+        "Only HTTP and HTTPS targets are allowed",
+      );
+    }
+
+    let validatedAddress: string;
+
+    try {
+      validatedAddress = await getValidatedAddress(target);
+    } catch (error) {
+      if (error instanceof SafeFetchError) {
+        throw error;
+      }
+
+      throw new SafeFetchError(
+        "network_error",
+        "Failed to resolve target hostname",
+      );
+    }
+
+    const response = await requestValidatedUrl(
+      target,
+      validatedAddress,
+      options.signal,
+    );
+
+    if (
+      response.statusCode < 300 ||
+      response.statusCode >= 400 ||
+      response.location === null
+    ) {
+      return response;
+    }
+
+    if (redirectCount >= MAX_REDIRECTS) {
+      throw new SafeFetchError(
+        "network_error",
+        "Maximum redirect limit exceeded",
+      );
+    }
+
+    try {
+      target = new URL(response.location, target);
+    } catch {
+      throw new SafeFetchError(
+        "network_error",
+        "Invalid redirect location",
+      );
     }
   }
 }
