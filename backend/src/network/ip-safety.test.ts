@@ -95,4 +95,21 @@ describe("isSafeIpAddress", () => {
   it("rejects a bracketed IPv6 loopback address", () => {
     expect(isSafeIpAddress("[::1]")).toBe(false);
   });
+
+  it("rejects carrier-grade NAT IPv4 addresses", () => {
+  expect(isSafeIpAddress("100.64.0.1")).toBe(false);
+  });
+
+  it("rejects IETF protocol assignment IPv4 addresses", () => {
+    expect(isSafeIpAddress("192.0.0.1")).toBe(false);
+  });
+
+  it("rejects benchmarking IPv4 addresses", () => {
+    expect(isSafeIpAddress("198.18.0.1")).toBe(false);
+  });
+
+  it("rejects documentation IPv4 addresses", () => {
+    expect(isSafeIpAddress("198.51.100.1")).toBe(false);
+    expect(isSafeIpAddress("203.0.113.1")).toBe(false);
+  });
 });
