@@ -73,6 +73,16 @@ export function createValidatedConnector(
   };
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "UND_ERR_ABORTED")
+  );
+}
+
 export async function safeFetch(
   url: string,
   options: SafeFetchOptions = {},
@@ -134,11 +144,8 @@ export async function safeFetch(
       throw error;
     }
 
-    if (
-      error instanceof DOMException &&
-      error.name === "AbortError"
-    ) {
-      throw error;
+    if (isAbortError(error)) {
+      throw new DOMException("The operation was aborted", "AbortError");
     }
 
     throw new SafeFetchError(
@@ -146,6 +153,10 @@ export async function safeFetch(
       "Outbound request failed",
     );
   } finally {
-    await client.close();
+    if (options.signal?.aborted) {
+      await client.destroy();
+    } else {
+      await client.close();
+    }
   }
 }

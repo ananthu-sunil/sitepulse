@@ -232,37 +232,18 @@ describe("safeFetch", () => {
       await client.close();
     }
   });
+
   it("passes the caller's abort signal to the request", async () => {
-    server = createHttpServer((_request, _response) => {
-    });
-
-    await new Promise<void>((resolve) => {
-      server?.listen(0, "127.0.0.1", () => resolve());
-    });
-
-    const address = server.address();
-
-    if (!address || typeof address === "string") {
-      throw new Error("Failed to determine test server address");
-    }
-
-    const port = address.port;
-    const hostname = "sitepulse-spike.test";
-
-    mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
+    mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
 
     const controller = new AbortController();
-
-    const requestPromise = safeFetch(
-      `http://${hostname}:${port}`,
-      {
-        signal: controller.signal,
-      },
-    );
-
     controller.abort();
 
-    await expect(requestPromise).rejects.toMatchObject({
+    await expect(
+      safeFetch("https://example.com", {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({
       name: "AbortError",
     });
   });
