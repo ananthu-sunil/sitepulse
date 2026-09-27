@@ -145,7 +145,7 @@ describe("safeFetch", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-safe-fetch.test";
+    const hostname = "sitepulse-spike.test";
     const validatedAddress = "127.0.0.1";
 
     const client = new Client(`http://${hostname}:${port}`, {
@@ -187,8 +187,6 @@ describe("safeFetch", () => {
         cert,
       },
       (request, response) => {
-        console.log("SERVER RECEIVED REQUEST");
-
         remoteAddress = request.socket.remoteAddress;
         hostHeader = request.headers.host;
         serverName = request.socket.servername;
@@ -209,7 +207,7 @@ describe("safeFetch", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-safe-fetch.test";
+    const hostname = "sitepulse-spike.test";
     const validatedAddress = "127.0.0.1";
 
     const client = new Client(`https://${hostname}:${port}`, {
@@ -219,63 +217,53 @@ describe("safeFetch", () => {
     });
 
     try {
-      console.log("BEFORE REQUEST");
-
       const response = await client.request({
         path: "/",
         method: "GET",
       });
 
-      console.log("AFTER REQUEST");
-
       response.body.resume();
-
-      console.log("AFTER RESUME");
 
       expect(response.statusCode).toBe(200);
       expect(remoteAddress).toBe("127.0.0.1");
       expect(hostHeader).toBe(`${hostname}:${port}`);
       expect(serverName).toBe(hostname);
     } finally {
-      console.log("BEFORE CLOSE");
-
       await client.close();
-
-      console.log("AFTER CLOSE");
     }
   });
-  // it("passes the caller's abort signal to the request", async () => {
-  //   mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
+  it("passes the caller's abort signal to the request", async () => {
+    server = createHttpServer((_request, _response) => {
+    });
 
-  //   const controller = new AbortController();
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
 
-  //   const requestSpy = vi.fn().mockRejectedValue(
-  //     new DOMException(
-  //       "The operation was aborted",
-  //       "AbortError",
-  //     ),
-  //   );
+    const address = server.address();
 
-  //   const closeSpy = vi.fn().mockResolvedValue(undefined);
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
 
-  //   vi.doMock("undici", () => ({
-  //     Client: class {
-  //       request = requestSpy;
-  //       close = closeSpy;
-  //     },
-  //     buildConnector: () => {
-  //       throw new Error("Unexpected connector creation");
-  //     },
-  //   }));
+    const port = address.port;
+    const hostname = "sitepulse-spike.test";
 
-  //   controller.abort();
+    mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
 
-  //   await expect(
-  //     safeFetch("https://example.com", {
-  //       signal: controller.signal,
-  //     }),
-  //   ).rejects.toMatchObject({
-  //     name: "AbortError",
-  //   });
-  // });
+    const controller = new AbortController();
+
+    const requestPromise = safeFetch(
+      `http://${hostname}:${port}`,
+      {
+        signal: controller.signal,
+      },
+    );
+
+    controller.abort();
+
+    await expect(requestPromise).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
 });
