@@ -7,7 +7,7 @@ export const createTargetSchema = z.object({
       (url) => url.startsWith("http://") || url.startsWith("https://"),
       {
         message: "URL must use HTTP or HTTPS",
-      }
+      },
     ),
 });
 
