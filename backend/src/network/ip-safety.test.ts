@@ -97,7 +97,7 @@ describe("isSafeIpAddress", () => {
   });
 
   it("rejects carrier-grade NAT IPv4 addresses", () => {
-  expect(isSafeIpAddress("100.64.0.1")).toBe(false);
+    expect(isSafeIpAddress("100.64.0.1")).toBe(false);
   });
 
   it("rejects IETF protocol assignment IPv4 addresses", () => {

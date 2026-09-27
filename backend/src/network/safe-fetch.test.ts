@@ -1,6 +1,7 @@
 import {afterEach, describe, expect, it, vi} from "vitest";
 import {createValidatedConnector, safeFetch, SafeFetchError} from "./safe-fetch.js";
 import { resolveHostname } from "./resolve-host.js";
+import {isSafeIpAddress} from "./ip-safety.js";
 import { readFile } from "node:fs/promises";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
@@ -15,6 +16,18 @@ vi.mock("./resolve-host.js", () => ({
   resolveHostname: vi.fn(),
 }));
 
+vi.mock("./ip-safety.js", async () => {
+  const actual = await vi.importActual<typeof import("./ip-safety.js")>(
+    "./ip-safety.js",
+  );
+
+  return {
+    ...actual,
+    isSafeIpAddress: vi.fn(actual.isSafeIpAddress),
+  };
+});
+
+const mockedIsSafeIpAddress = vi.mocked(isSafeIpAddress);
 const mockedResolveHostname = vi.mocked(resolveHostname);
 
 describe("safeFetch", () => {
@@ -231,5 +244,160 @@ describe("safeFetch", () => {
     } finally {
       await client.close();
     }
+  });
+
+  it("follows a safe redirect", async () => {
+    mockedIsSafeIpAddress.mockImplementation(
+      (address) => address === "127.0.0.1",
+    );
+
+    server = createHttpServer((request, response) => {
+      if (request.url === "/start") {
+        response.writeHead(302, {
+          Location: "/final",
+        });
+        response.end();
+        return;
+      }
+
+      response.writeHead(200);
+      response.end("ok");
+    });
+
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
+
+    mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
+
+    const response = await safeFetch(
+      `http://sitepulse-spike.test:${address.port}/start`,
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(mockedResolveHostname).toHaveBeenCalledWith(
+      "sitepulse-spike.test",
+    );
+  });
+
+  it("revalidates the destination of a redirect", async () => {
+    mockedIsSafeIpAddress.mockImplementation(
+      (address) => address === "127.0.0.1",
+    );
+
+    server = createHttpServer((_request, response) => {
+      response.writeHead(302, {
+        Location: "http://internal.example/secret",
+      });
+      response.end();
+    });
+
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
+
+    mockedResolveHostname
+      .mockResolvedValueOnce(["127.0.0.1"])
+      .mockResolvedValueOnce(["10.0.0.1"]);
+
+    await expect(
+      safeFetch(`http://sitepulse-spike.test:${address.port}/start`),
+    ).rejects.toMatchObject({
+      code: "unsafe_target",
+    });
+
+    expect(mockedResolveHostname).toHaveBeenNthCalledWith(
+      1,
+      "sitepulse-spike.test",
+    );
+
+    expect(mockedResolveHostname).toHaveBeenNthCalledWith(
+      2,
+      "internal.example",
+    );
+  });
+
+  it("rejects a redirect to an unsafe IP address", async () => {
+    mockedIsSafeIpAddress.mockImplementation(
+      (address) => address === "127.0.0.1",
+    );
+
+    server = createHttpServer((_request, response) => {
+      response.writeHead(302, {
+        Location: "http://10.0.0.1/secret",
+      });
+      response.end();
+    });
+
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
+
+    mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
+
+    await expect(
+      safeFetch(`http://sitepulse-spike.test:${address.port}/start`),
+    ).rejects.toMatchObject({
+      code: "unsafe_target",
+    });
+  });
+
+  it("rejects when the redirect limit is exceeded", async () => {
+    mockedIsSafeIpAddress.mockImplementation(
+      (address) => address === "127.0.0.1",
+    );
+
+    server = createHttpServer((request, response) => {
+      const current = Number(
+        new URL(request.url ?? "/", "http://sitepulse-spike.test").searchParams.get(
+          "redirect",
+        ) ?? "0",
+      );
+
+      response.writeHead(302, {
+        Location: `/?redirect=${current + 1}`,
+      });
+      response.end();
+    });
+
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
+
+    mockedResolveHostname.mockResolvedValue(["127.0.0.1"]);
+
+    await expect(
+      safeFetch(
+        `http://sitepulse-spike.test:${address.port}/?redirect=0`,
+      ),
+    ).rejects.toMatchObject({
+      code: "network_error",
+    });
+
+    expect(mockedResolveHostname).toHaveBeenCalledTimes(6);
   });
 });
