@@ -52,8 +52,11 @@ function getValidatedAddress(url: URL): Promise<string> | string {
   });
 }
 
-export function createValidatedConnector(ipAddress: string) {
-  const connector = buildConnector({});
+export function createValidatedConnector(
+  ipAddress: string,
+  connectorOptions: Parameters<typeof buildConnector>[0] = {},
+) {
+  const connector = buildConnector(connectorOptions);
 
   return (
     options: Parameters<typeof connector>[0],
@@ -63,6 +66,7 @@ export function createValidatedConnector(ipAddress: string) {
       {
         ...options,
         hostname: ipAddress,
+        servername: options.servername ?? options.hostname,
       },
       callback,
     );

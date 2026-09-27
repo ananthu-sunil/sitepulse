@@ -168,8 +168,82 @@ describe("safeFetch", () => {
     }
   });
 
-  
+  it("connects to the validated IP while preserving HTTPS hostname identity", async () => {
+    const key = await readFile(
+      new URL("./fixtures/spike-key.pem", import.meta.url),
+    );
 
+    const cert = await readFile(
+      new URL("./fixtures/spike-cert.pem", import.meta.url),
+    );
+
+    let remoteAddress: string | undefined;
+    let hostHeader: string | undefined;
+    let serverName: string | undefined;
+
+    server = createHttpsServer(
+      {
+        key,
+        cert,
+      },
+      (request, response) => {
+        console.log("SERVER RECEIVED REQUEST");
+
+        remoteAddress = request.socket.remoteAddress;
+        hostHeader = request.headers.host;
+        serverName = request.socket.servername;
+
+        response.writeHead(200);
+        response.end("ok");
+      },
+    );
+
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
+
+    const address = server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
+    }
+
+    const port = address.port;
+    const hostname = "sitepulse-safe-fetch.test";
+    const validatedAddress = "127.0.0.1";
+
+    const client = new Client(`https://${hostname}:${port}`, {
+      connect: createValidatedConnector(validatedAddress, {
+        ca: cert,
+      }),
+    });
+
+    try {
+      console.log("BEFORE REQUEST");
+
+      const response = await client.request({
+        path: "/",
+        method: "GET",
+      });
+
+      console.log("AFTER REQUEST");
+
+      response.body.resume();
+
+      console.log("AFTER RESUME");
+
+      expect(response.statusCode).toBe(200);
+      expect(remoteAddress).toBe("127.0.0.1");
+      expect(hostHeader).toBe(`${hostname}:${port}`);
+      expect(serverName).toBe(hostname);
+    } finally {
+      console.log("BEFORE CLOSE");
+
+      await client.close();
+
+      console.log("AFTER CLOSE");
+    }
+  });
   // it("passes the caller's abort signal to the request", async () => {
   //   mockedResolveHostname.mockResolvedValue(["93.184.216.34"]);
 
