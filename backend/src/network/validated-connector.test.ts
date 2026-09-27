@@ -2,9 +2,11 @@ import { readFile } from "node:fs/promises";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { afterEach, describe, expect, it } from "vitest";
-import { Client, buildConnector } from "undici";
+import { Client } from "undici";
+import { TLSSocket } from "node:tls";
+import { createValidatedConnector } from "./safe-fetch.js";
 
-describe("validated IP connector spike", () => {
+describe("validated IP connector", () => {
   let server:
     | ReturnType<typeof createHttpServer>
     | ReturnType<typeof createHttpsServer>
@@ -52,21 +54,11 @@ describe("validated IP connector spike", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-spike.test";
+    const hostname = "sitepulse.test";
     const validatedAddress = "127.0.0.1";
 
-    const connector = buildConnector({});
-
     const client = new Client(`http://${hostname}:${port}`, {
-      connect(options, callback) {
-        connector(
-          {
-            ...options,
-            hostname: validatedAddress,
-          },
-          callback,
-        );
-      },
+      connect: createValidatedConnector(validatedAddress),
     });
 
     try {
@@ -87,11 +79,11 @@ describe("validated IP connector spike", () => {
 
   it("connects to the validated IP while preserving HTTPS hostname identity", async () => {
     const key = await readFile(
-      new URL("./fixtures/spike-key.pem", import.meta.url),
+      new URL("./fixtures/test-key.pem", import.meta.url),
     );
 
     const cert = await readFile(
-      new URL("./fixtures/spike-cert.pem", import.meta.url),
+      new URL("./fixtures/test-cert.pem", import.meta.url),
     );
 
     let remoteAddress: string | undefined;
@@ -106,7 +98,7 @@ describe("validated IP connector spike", () => {
       (request, response) => {
         remoteAddress = request.socket.remoteAddress;
         hostHeader = request.headers.host;
-        serverName = request.socket.servername;
+        serverName = (request.socket as TLSSocket).servername || undefined;
 
         response.writeHead(200);
         response.end("ok");
@@ -124,23 +116,13 @@ describe("validated IP connector spike", () => {
     }
 
     const port = address.port;
-    const hostname = "sitepulse-spike.test";
+    const hostname = "sitepulse.test";
     const validatedAddress = "127.0.0.1";
 
-    const connector = buildConnector({
-      ca: cert,
-    });
-
     const client = new Client(`https://${hostname}:${port}`, {
-      connect(options, callback) {
-        connector(
-          {
-            ...options,
-            hostname: validatedAddress,
-          },
-          callback,
-        );
-      },
+      connect: createValidatedConnector(validatedAddress, {
+        ca: cert,
+      }),
     });
 
     try {
@@ -159,76 +141,67 @@ describe("validated IP connector spike", () => {
       await client.close();
     }
   });
+
   it("rejects an HTTPS certificate when the hostname does not match", async () => {
-  const key = await readFile(
-    new URL("./fixtures/spike-key.pem", import.meta.url),
-  );
+    const key = await readFile(
+      new URL("./fixtures/test-key.pem", import.meta.url),
+    );
 
-  const cert = await readFile(
-    new URL("./fixtures/spike-cert.pem", import.meta.url),
-  );
+    const cert = await readFile(
+      new URL("./fixtures/test-cert.pem", import.meta.url),
+    );
 
-  server = createHttpsServer(
-    {
-      key,
-      cert,
-    },
-    (_request, response) => {
-      response.writeHead(200);
-      response.end("ok");
-    },
-  );
+    server = createHttpsServer(
+      {
+        key,
+        cert,
+      },
+      (_request, response) => {
+        response.writeHead(200);
+        response.end("ok");
+      },
+    );
 
-  await new Promise<void>((resolve) => {
-    server?.listen(0, "127.0.0.1", () => resolve());
-  });
+    await new Promise<void>((resolve) => {
+      server?.listen(0, "127.0.0.1", () => resolve());
+    });
 
-  const address = server.address();
+    const address = server.address();
 
-  if (!address || typeof address === "string") {
-    throw new Error("Failed to determine test server address");
-  }
-
-  const port = address.port;
-  const hostname = "wrong-hostname.test";
-  const validatedAddress = "127.0.0.1";
-
-  const connector = buildConnector({
-    ca: cert,
-  });
-
-  const client = new Client(`https://${hostname}:${port}`, {
-    connectTimeout: 1000,
-    connect(options, callback) {
-      connector(
-        {
-          ...options,
-          hostname: validatedAddress,
-        },
-        callback,
-      );
-    },
-  });
-
-  try {
-    let requestError: unknown;
-
-    try {
-      await client.request({
-        path: "/",
-        method: "GET",
-      });
-    } catch (error) {
-      requestError = error;
+    if (!address || typeof address === "string") {
+      throw new Error("Failed to determine test server address");
     }
 
-    expect(requestError).toBeDefined();
-    expect(requestError).toMatchObject({
-      code: "ERR_TLS_CERT_ALTNAME_INVALID",
-      host: hostname,
+    const port = address.port;
+    const hostname = "wrong-hostname.test";
+    const validatedAddress = "127.0.0.1";
+
+    const client = new Client(`https://${hostname}:${port}`, {
+      connectTimeout: 1000,
+      connect: createValidatedConnector(validatedAddress, {
+        ca: cert,
+      }),
     });
-  } finally {
-    await client.destroy();
-  }
-});
+
+    try {
+      let requestError: unknown;
+
+      try {
+        await client.request({
+          path: "/",
+          method: "GET",
+        });
+      } catch (error) {
+        requestError = error;
+      }
+
+      expect(requestError).toBeDefined();
+      expect(requestError).toMatchObject({
+        code: "ERR_TLS_CERT_ALTNAME_INVALID",
+        host: hostname,
+      });
+    } finally {
+      await client.destroy();
+    }
+  });
 });

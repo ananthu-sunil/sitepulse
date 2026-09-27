@@ -9,7 +9,10 @@ export type ScanResult = {
   error?: ScanError;
 };
 
-export async function scanTarget(url: string, timeoutMs = 5000): Promise<ScanResult> {
+export async function scanTarget(
+  url: string,
+  timeoutMs = 5000,
+): Promise<ScanResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const start = performance.now();

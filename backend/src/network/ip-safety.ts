@@ -20,6 +20,34 @@ function isPrivateIpv4(address: string): boolean {
   );
 }
 
+function isCarrierGradeNatIpv4(address: string): boolean {
+  const [first, second] = address.split(".").map(Number);
+
+  return first === 100 && second >= 64 && second <= 127;
+}
+
+function isIetfProtocolAssignmentIpv4(address: string): boolean {
+  const [first, second, third] = address.split(".").map(Number);
+
+  return first === 192 && second === 0 && third === 0;
+}
+
+function isBenchmarkingIpv4(address: string): boolean {
+  const [first, second] = address.split(".").map(Number);
+
+  return first === 198 && second >= 18 && second <= 19;
+}
+
+function isDocumentationIpv4(address: string): boolean {
+  const [first, second, third] = address.split(".").map(Number);
+
+  return (
+    (first === 192 && second === 0 && third === 2) ||
+    (first === 198 && second === 51 && third === 100) ||
+    (first === 203 && second === 0 && third === 113)
+  );
+}
+
 function isLoopbackIpv4(address: string): boolean {
   return address.split(".").map(Number)[0] === 127;
 }
@@ -34,12 +62,23 @@ function isUnspecifiedIpv4(address: string): boolean {
   return address.split(".").every((octet) => Number(octet) === 0);
 }
 
+function isMulticastIpv4(address: string): boolean {
+  const first = address.split(".").map(Number)[0];
+
+  return first >= 224 && first <= 239;
+}
+
 function isUnsafeIpv4(address: string): boolean {
   return (
     isPrivateIpv4(address) ||
     isLoopbackIpv4(address) ||
     isLinkLocalIpv4(address) ||
-    isUnspecifiedIpv4(address)
+    isUnspecifiedIpv4(address) ||
+    isCarrierGradeNatIpv4(address) ||
+    isIetfProtocolAssignmentIpv4(address) ||
+    isBenchmarkingIpv4(address) ||
+    isDocumentationIpv4(address) ||
+    isMulticastIpv4(address)
   );
 }
 
@@ -68,7 +107,8 @@ function isUnsafeIpv6(address: string): boolean {
     normalized.startsWith("fe8") ||
     normalized.startsWith("fe9") ||
     normalized.startsWith("fea") ||
-    normalized.startsWith("feb")
+    normalized.startsWith("feb") ||
+    normalized.startsWith("ff")
   ) {
     return true;
   }
