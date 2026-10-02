@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: sitepulse
       POSTGRES_USER: sitepulse
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
       - sitepulse-postgres-data:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
@@ -38,8 +36,6 @@ services:
     depends_on:
       migration:
         condition: service_completed_successfully
-    ports:
-      - "3000:3000"
 
   worker:
     image: sitepulse-worker:latest
