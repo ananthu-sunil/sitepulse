@@ -28,6 +28,9 @@ services:
 
   server:
     image: sitepulse-server:latest
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -40,6 +43,9 @@ services:
 
   worker:
     image: sitepulse-worker:latest
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
@@ -50,6 +56,9 @@ services:
 
   client:
     image: sitepulse-client:latest
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
     depends_on:
       server:
         condition: service_started
