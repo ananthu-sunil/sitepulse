@@ -33,6 +33,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      DATABASE_IDLE_TIMEOUT_MS: ${DATABASE_IDLE_TIMEOUT_MS:-10000}
+      DATABASE_CONNECTION_TIMEOUT_MS: ${DATABASE_CONNECTION_TIMEOUT_MS:-5000}
     depends_on:
       migration:
         condition: service_completed_successfully
