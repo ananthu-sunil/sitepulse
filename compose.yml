@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: sitepulse
       POSTGRES_USER: sitepulse
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
     volumes:
       - sitepulse-postgres-data:/var/lib/postgresql
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
@@ -28,18 +26,25 @@ services:
 
   server:
     image: sitepulse-server:latest
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+      DATABASE_IDLE_TIMEOUT_MS: ${DATABASE_IDLE_TIMEOUT_MS:-10000}
+      DATABASE_CONNECTION_TIMEOUT_MS: ${DATABASE_CONNECTION_TIMEOUT_MS:-5000}
     depends_on:
       migration:
         condition: service_completed_successfully
-    ports:
-      - "3000:3000"
 
   worker:
     image: sitepulse-worker:latest
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://sitepulse:${POSTGRES_PASSWORD}@postgres:5432/sitepulse
@@ -50,6 +55,9 @@ services:
 
   client:
     image: sitepulse-client:latest
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
     depends_on:
       server:
         condition: service_started
