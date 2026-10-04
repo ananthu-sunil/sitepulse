@@ -35,6 +35,7 @@ RUN npm ci --omit=dev
 COPY --from=build /app/backend/dist backend/dist
 COPY --from=build /app/server/dist server/dist
 
+EXPOSE 3000
 USER sitepulse
 
 CMD ["node", "server/dist/server.js"]

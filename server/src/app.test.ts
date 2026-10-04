@@ -31,11 +31,11 @@ describe("GET /ready", () => {
   });
 
   it("returns 503 when the database check fails", async () => {
-      const failingDb = {
-        query: async () => {
-          throw new Error("Database unavailable");
-        },
-      } as unknown as typeof testPool;
+    const failingDb = {
+      query: async () => {
+        throw new Error("Database unavailable");
+      },
+    } as unknown as typeof testPool;
 
     const failingApp = createApp(failingDb);
     const response = await request(failingApp).get("/ready");
