@@ -22,6 +22,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN addgroup -S sitepulse && adduser -S sitepulse -G sitepulse
+
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY server/package.json server/package.json
@@ -32,5 +34,7 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/backend/dist backend/dist
 COPY --from=build /app/worker/dist worker/dist
+
+USER sitepulse
 
 CMD ["node", "worker/dist/worker.js"]
