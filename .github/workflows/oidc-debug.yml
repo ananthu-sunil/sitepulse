@@ -123,3 +123,5 @@ jobs:
             echo "::warning::AWS OIDC authentication failed."
             echo "Inspect the Configure AWS credentials step above."
           fi
+
+          
