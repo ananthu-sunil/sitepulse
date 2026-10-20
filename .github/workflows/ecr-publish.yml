@@ -2,9 +2,9 @@
 name: Publish SitePulse Images to ECR
 
 on:
-  # push:
-  #   branches:
-  #     - '**'
+  push:
+    branches:
+      - '**'
   workflow_dispatch:
 
 permissions:
