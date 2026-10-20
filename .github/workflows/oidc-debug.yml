@@ -2,6 +2,9 @@
 name: Debug AWS OIDC Authentication
 
 on:
+  push:
+    branches:
+      - feature/ecr-publish-pipeline
   workflow_dispatch:
 
 permissions:
